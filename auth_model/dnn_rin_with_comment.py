@@ -7,34 +7,42 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix as cm
+
 #fix the value of the random seed, so that the code runs same each time
 np.random.seed(5)
+
 #define the length of data based on which the prediction is to happen
 t = 3
+
 #read the dataset in the form of 9 time steps x 5 features
-dataset = pd.read_csv('Group 7 - A.csv')
+dataset = pd.read_csv('../dataset/group-7-a.csv')
 X = dataset.iloc[:, 2:7].values
 scaler = StandardScaler().fit(X)
+
 #define X_train as first 3 time steps and Y_train as the consecutive 1 time step, so the sequences shifts by one every time
 #resulting in (9-t)=6 shifts x 10 people samples = 60 samples
 X_train = np.ndarray((60,3,5),np.float32)
 Y_train = np.ndarray((60,1,5),np.float32)
+
 for i in range(0,10):
     for j in range(0,9-t):
         X_train[int(i*(9-t)+j)] = X[(i*9+j):(i*9+j+3),:]
         Y_train[int(i*(9-t)+j)] = X[(i*9+j+3),:]
 Y_train.resize((60,5))
+
 #the initial dataset is reshaped into 10 people x 9 time steps x 5 features
 #so that predicted synthetic data can be added to each person
 data = np.ndarray((10,9,5),np.float32)
 for i in range (0,10):
     data[i] = X[i*9:(i+1)*9, :]
+
 #DNN model for classification
 def model(shape):
     model = Sequential()
     model.add(Dense(60, input_dim=shape[1], activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
     return model
+
 #LSTM model for prediction
 pred_optim = SGD(momentum=0.9)
 def pred_model():
@@ -44,6 +52,7 @@ def pred_model():
     model.add(Dense(5))
     model.compile(optimizer='adam', loss='mse')
     return model
+
 #This function predicts new data points, where n_loop is the number of new data points to be predicted
 #and the output is the augmented data set in the shape 10 x (9 + n_loop) x 5
 
@@ -137,9 +146,11 @@ for idx_x in range(210):
 #np.savetxt("new_data_rnn.csv",np.around(X,decimals=2),delimiter=",")
 #scale the dataset into values between 0 to 1
 X = scaler.transform(X)
+
 #define first user as of class 1 and others as class 0
 Y = np.concatenate((np.ones(in_size[1]),np.zeros(in_size[1]*(in_size[0]-1))))
 print(" ---------------- Y shape = ", Y.shape)
+
 #use 2/3 of the time steps for each person for training and 1/3 of the time steps for testing
 X_train = X[0:int(in_size[1]*2/3), :]
 y_train = Y[0:int(in_size[1]*2/3),None]
@@ -154,12 +165,14 @@ for i in range(1,10):
 #define the DNN model and train it
 model=model(X_train.shape)
 model.summary()
+
 #optim = Adam(learning_rate = 0.0004)
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
 model.fit(X_train, y_train, epochs=100, validation_split=0.2, batch_size=3, shuffle=True)
 
 #Test the model
 y_pred = model.predict(X_test)
+
 #Hard labeling where labels of value less than 0.5 are classified as 0
 threshold = 0.5
 for i in range(len(y_pred)):
@@ -168,6 +181,7 @@ for i in range(len(y_pred)):
     else:
         y_pred[i]=int(1)
 print(y_pred)
+
 #print the confusion matrix
 print(cm(y_test,y_pred))
 
